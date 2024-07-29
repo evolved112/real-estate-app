@@ -1,20 +1,24 @@
 <template>
   <div id="app">
-    <Transactions />
+    <nav>
+      <router-link to="/">Home</router-link>
+      <router-link to="/login">Login</router-link>
+      <router-link to="/register">Register</router-link>
+      <router-link to="/transactions">Transactions</router-link>
+    </nav>
+    <router-view></router-view>
   </div>
 </template>
 
 <script>
-import Transactions from './components/Transactions.vue';
-
 export default {
   name: 'App',
-  components: {
-    Transactions
-  }
 };
 </script>
 
 <style>
-/* Add your styles here */
+nav {
+  display: flex;
+  gap: 1rem;
+}
 </style>
