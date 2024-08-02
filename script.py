@@ -6,18 +6,78 @@ import time
 # Initialize the Faker object
 fake = Faker()
 
-# Establish a connection to your MySQL database
-
+# Establish a connection to your PostgreSQL database
 conn = psycopg2.connect(database="yugabyte",
                         host="asia-east1.184b8e94-a319-4264-b326-2fca35dc2fb4.gcp.ybdb.io",
                         user="admin",
                         password="XQngPMG9Zius9zwD9Exn72iSXuy3bH",
                         port="5433",
-                        sslMode= 'verify-full',
-                        sslRootCert= './server/root.crt'
                         )
 
 cursor = conn.cursor()
+
+# Create tables if they don't exist
+create_table_queries = [
+    """
+    CREATE TABLE IF NOT EXISTS city (
+        city_id SERIAL PRIMARY KEY,
+        city_name VARCHAR(255) NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS region (
+        region_id SERIAL PRIMARY KEY,
+        region_name VARCHAR(255) NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS address (
+        address_id SERIAL PRIMARY KEY,
+        street_address VARCHAR(255) NOT NULL,
+        room_number VARCHAR(50),
+        city_id INT REFERENCES city(city_id),
+        region_id INT REFERENCES region(region_id)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS parties (
+        party_id SERIAL PRIMARY KEY,
+        nature VARCHAR(50) NOT NULL,
+        name VARCHAR(255) NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS properties (
+        property_id SERIAL PRIMARY KEY,
+        address_id INT REFERENCES address(address_id),
+        total_sqm INT NOT NULL,
+        number_bedroom INT NOT NULL,
+        number_bathroom INT NOT NULL,
+        amenity VARCHAR(50)
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS transactions (
+        transaction_id SERIAL PRIMARY KEY,
+        transaction_type VARCHAR(50) NOT NULL,
+        property_id INT REFERENCES properties(property_id),
+        date DATE NOT NULL,
+        price INT NOT NULL
+    )
+    """,
+    """
+    CREATE TABLE IF NOT EXISTS transaction_parties (
+        transaction_party_id SERIAL PRIMARY KEY,
+        transaction_id INT REFERENCES transactions(transaction_id),
+        party_id INT REFERENCES parties(party_id),
+        type VARCHAR(50) NOT NULL
+    )
+    """
+]
+
+# Execute table creation queries
+for query in create_table_queries:
+    cursor.execute(query)
 
 # Create functions to generate fake data for each table
 def generate_city_data():
@@ -40,7 +100,7 @@ def generate_address_data(city_ids, region_ids):
 
 def generate_parties_data():
     return {
-        "nature": fake.random_element(elements=('Individual', 'Company')),
+        "nature": fake.random_element(elements=('Individual', 'Government', 'Organization')),
         "name": fake.name()
     }
 
@@ -55,23 +115,19 @@ def generate_property_data(address_ids):
 
 def generate_transaction_data(party_ids, property_ids):
     transaction_type = fake.random_element(elements=('Sale', 'Rent'))
-    if transaction_type == "Sale":
-        return {
-            "party_id": random.choice(party_ids),
-            "transaction_type": transaction_type,
-            "property_id": random.choice(property_ids),
-            "date": fake.date(),
-            "price": fake.random_int(min=10000, max=1000000)
-        }
-    else:
-        return {
-            "party_id": random.choice(party_ids),
-            "transaction_type": transaction_type,
-            "property_id": random.choice(property_ids),
-            "date": fake.date(),
-            "price": fake.random_int(min=1000, max=10000)
-        }
-    
+    return {
+        "transaction_type": transaction_type,
+        "property_id": random.choice(property_ids),
+        "date": fake.date(),
+        "price": fake.random_int(min=1000, max=1000000)
+    }
+
+def generate_transaction_parties_data(transaction_ids, party_ids):
+    return {
+        "transaction_id": random.choice(transaction_ids),
+        "party_id": random.choice(party_ids),
+        "type": fake.random_element(elements=('Owner', 'Seller', 'Buyer', 'Lessor', 'Lessee'))
+    }
 
 # Function to insert data into the database
 def insert_data(sql, data_batch):
@@ -85,7 +141,8 @@ sql_insert_region = "INSERT INTO region (region_name) VALUES (%s)"
 sql_insert_address = "INSERT INTO address (street_address, room_number, city_id, region_id) VALUES (%s, %s, %s, %s)"
 sql_insert_parties = "INSERT INTO parties (nature, name) VALUES (%s, %s)"
 sql_insert_property = "INSERT INTO properties (address_id, total_sqm, number_bedroom, number_bathroom, amenity) VALUES (%s, %s, %s, %s, %s)"
-sql_insert_transaction = "INSERT INTO transactions (party_id, transaction_type, property_id, date, price) VALUES (%s, %s, %s, %s, %s)"
+sql_insert_transaction = "INSERT INTO transactions (transaction_type, property_id, date, price) VALUES (%s, %s, %s, %s)"
+sql_insert_transaction_parties = "INSERT INTO transaction_parties (transaction_id, party_id, type) VALUES (%s, %s, %s)"
 
 # Generate and insert data in batches
 batch_size = 1000
@@ -94,7 +151,8 @@ region_records = 1000
 address_records = 5000
 party_records = 10000
 property_records = 10000
-transaction_records = 200000
+transaction_records = 100000
+transaction_parties_records = 200000
 
 start_time = time.time()
 
@@ -152,6 +210,16 @@ for i in range(transaction_records // batch_size):
     data_batch = [generate_transaction_data(party_ids, property_ids) for _ in range(batch_size)]
     insert_data(sql_insert_transaction, data_batch)
     print(f"Inserted {(i + 1) * batch_size} records into transactions...")
+
+# Fetch transaction_ids
+cursor.execute("SELECT transaction_id FROM transactions")
+transaction_ids = [row[0] for row in cursor.fetchall()]
+
+# Insert data into transaction_parties table
+for i in range(transaction_parties_records // batch_size):
+    data_batch = [generate_transaction_parties_data(transaction_ids, party_ids) for _ in range(batch_size)]
+    insert_data(sql_insert_transaction_parties, data_batch)
+    print(f"Inserted {(i + 1) * batch_size} records into transaction_parties...")
 
 # Close the connection
 cursor.close()

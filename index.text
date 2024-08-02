@@ -1,0 +1,28 @@
+-- City Table
+CREATE INDEX idx_city_name ON city(city_name);
+
+-- Region Table
+CREATE INDEX idx_region_name ON region(region_name);
+
+-- Address Table
+CREATE INDEX idx_address_city_name ON address(city_name);
+CREATE INDEX idx_address_region_name ON address(region_name);
+CREATE INDEX idx_address_id ON address(address_id);
+
+-- Parties Table
+CREATE INDEX idx_party_name ON parties(name);
+
+-- Properties Table
+CREATE INDEX idx_properties_address_id ON properties(address_id);
+CREATE INDEX idx_properties_property_id ON properties(property_id);
+
+-- Transactions Table
+CREATE INDEX idx_transactions_property_id ON transactions(property_id);
+CREATE INDEX idx_transactions_transaction_type ON transactions(transaction_type);
+CREATE INDEX idx_transactions_date ON transactions(date);
+CREATE INDEX idx_transactions_transaction_id ON transactions(transaction_id);
+
+-- Transaction Parties Table
+CREATE INDEX idx_transaction_parties_transaction_id ON transaction_parties(transaction_id);
+CREATE INDEX idx_transaction_parties_party_id ON transaction_parties(party_id);
+CREATE INDEX idx_transaction_parties_type ON transaction_parties(type);

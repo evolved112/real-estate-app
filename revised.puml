@@ -1,0 +1,68 @@
+@startuml
+
+entity city {
+  * city_id: SERIAL
+  --
+  * city_name: VARCHAR(255)
+}
+
+entity region {
+  * region_id: SERIAL
+  --
+  * region_name: VARCHAR(255)
+}
+
+entity address {
+  * address_id: SERIAL
+  --
+  * street_address: VARCHAR(255)
+  * room_number: VARCHAR(50)
+  * city_name: VARCHAR(255)
+  * region_name: VARCHAR(255)
+}
+
+entity parties {
+  * party_id: SERIAL
+  --
+  * nature: VARCHAR(50)
+  * name: VARCHAR(255)
+}
+
+entity properties {
+  * property_id: SERIAL
+  --
+  * address_id: INT
+  * total_sqm: INT
+  * number_bedroom: INT
+  * number_bathroom: INT
+  * amenity: VARCHAR(50)
+}
+
+entity transactions {
+  * transaction_id: SERIAL
+  --
+  * transaction_type: VARCHAR(50)
+  * property_id: INT
+  * property_address: VARCHAR(255)
+  * total_sqm: INT
+  * number_bedroom: INT
+  * number_bathroom: INT
+  * amenity: VARCHAR(50)
+  * date: DATE
+  * price: INT
+}
+
+entity transaction_parties {
+  * transaction_party_id: SERIAL
+  --
+  * transaction_id: INT
+  * party_id: INT
+  * type: VARCHAR(50)
+}
+
+properties::address_id --> address::address_id
+transactions::property_id --> properties::property_id
+transaction_parties::transaction_id --> transactions::transaction_id
+transaction_parties::party_id --> parties::party_id
+
+@enduml
